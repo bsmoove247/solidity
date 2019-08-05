@@ -88,7 +88,7 @@ string ABIFunctions::tupleEncoder(
 			elementTempl("pos", to_string(headPos));
 			elementTempl("abiEncode", abiEncodingFunction(*_givenTypes[i], *_targetTypes[i], options));
 			encodeElements += elementTempl.render();
-			headPos += _targetTypes[i]->calldataEncodedSize();
+			headPos += _targetTypes[i]->calldataHeadIncrement();
 			stackPos += sizeOnStack;
 		}
 		solAssert(headPos == headSize_, "");
@@ -225,7 +225,7 @@ string ABIFunctions::tupleDecoder(TypePointers const& _types, bool _fromMemory)
 			elementTempl("pos", to_string(headPos));
 			elementTempl("abiDecode", abiDecodingFunction(*_types[i], _fromMemory, true));
 			decodeElements += elementTempl.render();
-			headPos += decodingTypes[i]->calldataEncodedSize();
+			headPos += decodingTypes[i]->calldataHeadIncrement();
 		}
 		templ("valueReturnParams", boost::algorithm::join(valueReturnParams, ", "));
 		templ("arrow", valueReturnParams.empty() ? "" : "->");
@@ -716,7 +716,7 @@ string ABIFunctions::abiEncodingFunctionCompactStorageArray(
 								let data := sload(srcPtr)
 								<#items>
 									<encodeToMemoryFun>(<extractFromSlot>(data), pos)
-									pos := add(pos, <elementEncodedSize>)
+									pos := add(pos, <stride>)
 								</items>
 								srcPtr := add(srcPtr, 1)
 							}
@@ -727,7 +727,7 @@ string ABIFunctions::abiEncodingFunctionCompactStorageArray(
 							<#items>
 								if <inRange> {
 									<encodeToMemoryFun>(<extractFromSlot>(data), pos)
-									pos := add(pos, <elementEncodedSize>)
+									pos := add(pos, <stride>)
 									itemCounter := add(itemCounter, 1)
 								}
 							</items>
@@ -754,9 +754,7 @@ string ABIFunctions::abiEncodingFunctionCompactStorageArray(
 			else
 				templ("useSpill", "0");
 			templ("itemsPerSlot", to_string(itemsPerSlot));
-			// We use padded size because array elements are always padded.
-			string elementEncodedSize = toCompactHexWithPrefix(_to.baseType()->calldataEncodedSize());
-			templ("elementEncodedSize", elementEncodedSize);
+			templ("stride", toCompactHexWithPrefix(_to.calldataStride()));
 
 			EncodingOptions subOptions(_options);
 			subOptions.encodeFunctionFromStack = false;
@@ -915,7 +913,7 @@ string ABIFunctions::abiEncodingFunctionStruct(
 				);
 				encodeTempl("memberValues", memberValues);
 				encodeTempl("encodingOffset", toCompactHexWithPrefix(encodingOffset));
-				encodingOffset += memberTypeTo->calldataEncodedSize();
+				encodingOffset += memberTypeTo->calldataHeadIncrement();
 				encodeTempl("abiEncode", abiEncodingFunction(*memberTypeFrom, *memberTypeTo, subOptions));
 				encode = encodeTempl.render();
 			}
@@ -1081,8 +1079,8 @@ string ABIFunctions::abiDecodingFunctionValueType(Type const& _type, bool _fromM
 	solAssert(decodingType, "");
 	solAssert(decodingType->sizeOnStack() == 1, "");
 	solAssert(decodingType->isValueType(), "");
-	solAssert(decodingType->calldataEncodedSize() == 32, "");
 	solAssert(!decodingType->isDynamicallyEncoded(), "");
+	solAssert(decodingType->calldataEncodedSize() == 32, "");
 
 	string functionName =
 		"abi_decode_" +
@@ -1136,7 +1134,7 @@ string ABIFunctions::abiDecodingFunctionArray(ArrayType const& _type, bool _from
 						let elementPos := <retrieveElementPos>
 						mstore(dst, <decodingFun>(elementPos, end))
 						dst := add(dst, 0x20)
-						src := add(src, <baseEncodedSize>)
+						src := add(src, <stride>)
 					}
 				}
 			)"
@@ -1154,14 +1152,14 @@ string ABIFunctions::abiDecodingFunctionArray(ArrayType const& _type, bool _from
 		{
 			templ("staticBoundsCheck", "");
 			templ("retrieveElementPos", "add(offset, " + load + "(src))");
-			templ("baseEncodedSize", "0x20");
+			templ("stride", "0x20");
 		}
 		else
 		{
-			string baseEncodedSize = toCompactHexWithPrefix(_type.baseType()->calldataEncodedSize());
-			templ("staticBoundsCheck", "if gt(add(src, mul(length, " + baseEncodedSize + ")), end) { revert(0, 0) }");
+			string calldataStride = toCompactHexWithPrefix(_type.calldataStride());
+			templ("staticBoundsCheck", "if gt(add(src, mul(length, " + calldataStride + ")), end) { revert(0, 0) }");
 			templ("retrieveElementPos", "src");
-			templ("baseEncodedSize", baseEncodedSize);
+			templ("stride", calldataStride);
 		}
 		templ("decodingFun", abiDecodingFunction(*_type.baseType(), _fromMemory, false));
 		return templ.render();
@@ -1173,8 +1171,8 @@ string ABIFunctions::abiDecodingFunctionCalldataArray(ArrayType const& _type)
 	solAssert(_type.dataStoredIn(DataLocation::CallData), "");
 	if (!_type.isDynamicallySized())
 		solAssert(_type.length() < u256("0xffffffffffffffff"), "");
-	solAssert(_type.baseType()->calldataEncodedSize() > 0, "");
-	solAssert(_type.baseType()->calldataEncodedSize() < u256("0xffffffffffffffff"), "");
+	solAssert(_type.calldataStride() > 0, "");
+	solAssert(_type.calldataStride() < u256("0xffffffffffffffff"), "");
 
 	string functionName =
 		"abi_decode_" +
@@ -1189,7 +1187,7 @@ string ABIFunctions::abiDecodingFunctionCalldataArray(ArrayType const& _type)
 					length := calldataload(offset)
 					if gt(length, 0xffffffffffffffff) { revert(0, 0) }
 					arrayPos := add(offset, 0x20)
-					if gt(add(arrayPos, mul(length, <baseEncodedSize>)), end) { revert(0, 0) }
+					if gt(add(arrayPos, mul(length, <stride>)), end) { revert(0, 0) }
 				}
 			)";
 		else
@@ -1197,14 +1195,13 @@ string ABIFunctions::abiDecodingFunctionCalldataArray(ArrayType const& _type)
 				// <readableTypeName>
 				function <functionName>(offset, end) -> arrayPos {
 					arrayPos := offset
-					if gt(add(arrayPos, mul(<length>, <baseEncodedSize>)), end) { revert(0, 0) }
+					if gt(add(arrayPos, mul(<length>, <stride>)), end) { revert(0, 0) }
 				}
 			)";
 		Whiskers w{templ};
 		w("functionName", functionName);
 		w("readableTypeName", _type.toString(true));
-		// TODO this might make a difference
-		w("baseEncodedSize", toCompactHexWithPrefix(_type.isByteArray() ? 1 : _type.baseType()->calldataEncodedSize()));
+		w("stride", toCompactHexWithPrefix(_type.calldataStride()));
 		if (!_type.isDynamicallySized())
 			w("length", toCompactHexWithPrefix(_type.length()));
 		return w.render();
@@ -1248,7 +1245,7 @@ string ABIFunctions::abiDecodingFunctionByteArray(ArrayType const& _type, bool _
 string ABIFunctions::abiDecodingFunctionCalldataStruct(StructType const& _type)
 {
 	solAssert(_type.dataStoredIn(DataLocation::CallData), "");
-	solAssert(_type.calldataEncodedSize(true) != 0, "");
+	solAssert(_type.calldataHeadIncrement() != 0, "");
 	string functionName =
 		"abi_decode_" +
 		_type.identifier();
@@ -1263,7 +1260,8 @@ string ABIFunctions::abiDecodingFunctionCalldataStruct(StructType const& _type)
 		)"};
 		w("functionName", functionName);
 		w("readableTypeName", _type.toString(true));
-		w("minimumSize", to_string(_type.calldataEncodedSize(true)));
+		// TODO: This used padded calldatasize before. Any reason for that?
+		w("minimumSize", to_string(_type.isDynamicallyEncoded() ? _type.calldataEncodedTailSize() : _type.calldataEncodedSize(false)));
 		return w.render();
 	});
 }
@@ -1324,7 +1322,7 @@ string ABIFunctions::abiDecodingFunctionStruct(StructType const& _type, bool _fr
 			members.push_back({});
 			members.back()["decode"] = memberTempl.render();
 			members.back()["memberName"] = member.name;
-			headPos += decodingType->calldataEncodedSize();
+			headPos += decodingType->calldataHeadIncrement();
 		}
 		templ("members", members);
 		templ("minimumSize", toCompactHexWithPrefix(headPos));
@@ -1378,8 +1376,8 @@ string ABIFunctions::calldataAccessFunction(Type const& _type)
 	return createFunction(functionName, [&]() {
 		if (_type.isDynamicallyEncoded())
 		{
-			unsigned int baseEncodedSize = _type.calldataEncodedSize();
-			solAssert(baseEncodedSize > 1, "");
+			unsigned int tailSize = _type.calldataEncodedTailSize();
+			solAssert(tailSize > 1, "");
 			Whiskers w(R"(
 				function <functionName>(base_ref, ptr) -> <return> {
 					let rel_offset_of_tail := calldataload(ptr)
@@ -1392,13 +1390,12 @@ string ABIFunctions::calldataAccessFunction(Type const& _type)
 			{
 				auto const* arrayType = dynamic_cast<ArrayType const*>(&_type);
 				solAssert(!!arrayType, "");
-				unsigned int calldataStride = arrayType->calldataStride();
 				w("handleLength", Whiskers(R"(
 					length := calldataload(value)
 					value := add(value, 0x20)
 					if gt(length, 0xffffffffffffffff) { revert(0, 0) }
 					if sgt(base_ref, sub(calldatasize(), mul(length, <calldataStride>))) { revert(0, 0) }
-				)")("calldataStride", toCompactHexWithPrefix(calldataStride)).render());
+				)")("calldataStride", toCompactHexWithPrefix(arrayType->calldataStride())).render());
 				w("return", "value, length");
 			}
 			else
@@ -1406,8 +1403,7 @@ string ABIFunctions::calldataAccessFunction(Type const& _type)
 				w("handleLength", "");
 				w("return", "value");
 			}
-			// TODO this makes a difference!
-			w("neededLength", toCompactHexWithPrefix(baseEncodedSize));
+			w("neededLength", toCompactHexWithPrefix(tailSize));
 			w("functionName", functionName);
 			return w.render();
 		}
@@ -1486,7 +1482,7 @@ size_t ABIFunctions::headSize(TypePointers const& _targetTypes)
 {
 	size_t headSize = 0;
 	for (auto const& t: _targetTypes)
-		headSize += t->calldataEncodedSize();
+		headSize += t->calldataHeadIncrement();
 
 	return headSize;
 }

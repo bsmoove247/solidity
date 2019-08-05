@@ -243,7 +243,7 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 				else if (_sourceType.location() == DataLocation::Memory)
 					_context << sourceBaseType->memoryHeadSize();
 				else
-					_context << sourceBaseType->calldataEncodedSize(true);
+					_context << sourceBaseType->calldataHeadIncrement();
 				_context
 					<< Instruction::ADD
 					<< swapInstruction(2 + byteOffsetSize);
@@ -506,8 +506,8 @@ void ArrayUtils::copyArrayToMemory(ArrayType const& _sourceType, bool _padToWord
 			m_context << Instruction::SWAP1 << Instruction::POP;
 		if (!_sourceType.isByteArray())
 		{
-			solAssert(_sourceType.baseType()->calldataEncodedSize() % 32 == 0, "");
-			solAssert(_sourceType.baseType()->memoryHeadSize() % 32 == 0, "");
+			solAssert(_sourceType.calldataStride() % 32 == 0, "");
+			solAssert(_sourceType.memoryStride() % 32 == 0, "");
 		}
 		if (_padToWordBoundaries && _sourceType.isByteArray())
 		{
@@ -981,9 +981,9 @@ void ArrayUtils::convertLengthToSize(ArrayType const& _arrayType, bool _pad) con
 		if (!_arrayType.isByteArray())
 		{
 			if (_arrayType.location() == DataLocation::Memory)
-				m_context << _arrayType.baseType()->memoryHeadSize();
+				m_context << _arrayType.memoryStride();
 			else
-				m_context << _arrayType.baseType()->calldataEncodedSize();
+				m_context << _arrayType.calldataStride();
 			m_context << Instruction::MUL;
 		}
 		else if (_pad)
@@ -1061,10 +1061,7 @@ void ArrayUtils::accessIndex(ArrayType const& _arrayType, bool _doBoundsCheck, b
 	case DataLocation::CallData:
 		if (!_arrayType.isByteArray())
 		{
-			if (_arrayType.baseType()->isDynamicallyEncoded())
-				m_context << u256(0x20);
-			else
-				m_context << _arrayType.baseType()->calldataEncodedSize();
+			m_context << _arrayType.calldataStride();
 			m_context << Instruction::MUL;
 		}
 		// stack: <base_ref> <index * size>
