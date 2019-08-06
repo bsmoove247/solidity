@@ -149,7 +149,10 @@ if (SANITIZE)
 	# -fno-omit-frame-pointer gives more informative stack trace in case of an error
 	# -fsanitize-address-use-after-scope throws an error when a variable is used beyond its scope
 	if (san STREQUAL "address")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address -fsanitize-address-use-after-scope")
+		# define DISABLE_CHECK_FOR_ASAN for ASan builds to
+		# be used to selectively disable checks in unit
+		# tests that are sensitive to run time.
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address -fsanitize-address-use-after-scope -DDISABLE_CHECK_FOR_ASAN_BUILD")
 	endif()
 endif()
 
