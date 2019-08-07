@@ -1667,14 +1667,6 @@ unsigned ArrayType::calldataEncodedSize(bool _padded) const
 	return unsigned(size);
 }
 
-unsigned ArrayType::calldataHeadIncrement() const
-{
-	if (isDynamicallyEncoded())
-		return 32;
-	else
-		return calldataEncodedSize(true);
-}
-
 unsigned ArrayType::calldataEncodedTailSize() const
 {
 	solAssert(isDynamicallyEncoded(), "");
@@ -2028,27 +2020,17 @@ unsigned StructType::calldataEncodedSize(bool) const
 }
 
 
-unsigned StructType::calldataHeadIncrement() const
-{
-	if (isDynamicallyEncoded())
-		return 32;
-	else
-		return calldataEncodedSize(true);
-}
-
 unsigned StructType::calldataEncodedTailSize() const
 {
 	solAssert(isDynamicallyEncoded(), "");
 
 	unsigned size = 0;
 	for (auto const& member: members(nullptr))
-		if (!member.type->canLiveOutsideStorage())
-			return 0;
-		else
-		{
-			// Struct members are always padded.
-			size += member.type->calldataHeadIncrement();
-		}
+	{
+		solAssert(member.type->canLiveOutsideStorage(), "");
+		// Struct members are always padded.
+		size += member.type->calldataHeadIncrement();
+	}
 	return size;
 }
 
@@ -2060,10 +2042,8 @@ unsigned StructType::calldataOffsetOfMember(std::string const& _member) const
 		solAssert(member.type->canLiveOutsideStorage(), "");
 		if (member.name == _member)
 			return offset;
-		{
-			// Struct members are always padded.
-			offset += member.type->calldataHeadIncrement();
-		}
+		// Struct members are always padded.
+		offset += member.type->calldataHeadIncrement();
 	}
 	solAssert(false, "Struct member not found.");
 }
