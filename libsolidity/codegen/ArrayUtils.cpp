@@ -243,7 +243,7 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 				else if (_sourceType.location() == DataLocation::Memory)
 					_context << sourceBaseType->memoryHeadSize();
 				else
-					_context << sourceBaseType->calldataHeadIncrement();
+					_context << sourceBaseType->calldataHeadSize();
 				_context
 					<< Instruction::ADD
 					<< swapInstruction(2 + byteOffsetSize);

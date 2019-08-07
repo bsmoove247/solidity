@@ -2029,7 +2029,7 @@ unsigned StructType::calldataEncodedTailSize() const
 	{
 		solAssert(member.type->canLiveOutsideStorage(), "");
 		// Struct members are always padded.
-		size += member.type->calldataHeadIncrement();
+		size += member.type->calldataHeadSize();
 	}
 	return size;
 }
@@ -2043,7 +2043,7 @@ unsigned StructType::calldataOffsetOfMember(std::string const& _member) const
 		if (member.name == _member)
 			return offset;
 		// Struct members are always padded.
-		offset += member.type->calldataHeadIncrement();
+		offset += member.type->calldataHeadSize();
 	}
 	solAssert(false, "Struct member not found.");
 }

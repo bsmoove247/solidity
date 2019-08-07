@@ -220,11 +220,11 @@ public:
 	/// For statically encoded types this is the same as calldataEncodedSize(true).
 	/// For dynamically encoded types this is the distance between two tail pointers, i.e. 32.
 	/// Always returns a value greater than zero and throws if the type cannot be encoded in calldata.
-	unsigned calldataHeadIncrement() const { return isDynamicallyEncoded() ? 32 : calldataEncodedSize(true); }
+	unsigned calldataHeadSize() const { return isDynamicallyEncoded() ? 32 : calldataEncodedSize(true); }
 	/// @returns the (minimal) size of the calldata tail for this type. Can only be used for
 	/// dynamically encoded types. For dynamically sized arrays this is 32 (the size of the length),
 	/// for statically-sized, but dynamically encoded arrays this is 32*length(), for structs
-	/// this is the sum of the calldataHeadIncrement's of its members.
+	/// this is the sum of the calldataHeadSize's of its members.
 	/// Always returns a value greater than zero and throws if the type cannot be encoded in calldata
 	/// (or is not dynamically encoded).
 	virtual unsigned calldataEncodedTailSize() const { solAssert(false, ""); }
@@ -750,7 +750,7 @@ public:
 	std::unique_ptr<ReferenceType> copyForLocation(DataLocation _location, bool _isPointer) const override;
 
 	/// The offset to advance in calldata to move from one array element to the next.
-	unsigned calldataStride() const { return isByteArray() ? 1 : m_baseType->calldataHeadIncrement(); }
+	unsigned calldataStride() const { return isByteArray() ? 1 : m_baseType->calldataHeadSize(); }
 	/// The offset to advance in memory to move from one array element to the next.
 	unsigned memoryStride() const { return isByteArray() ? 1 : m_baseType->memoryHeadSize(); }
 	/// The offset to advance in storage to move from one array element to the next.

@@ -252,7 +252,7 @@ void CompilerUtils::abiDecode(TypePointers const& _typeParameters, bool _fromMem
 	//@todo this does not yet support nested dynamic arrays
 	size_t encodedSize = 0;
 	for (auto const& t: _typeParameters)
-		encodedSize += t->decodingType()->calldataHeadIncrement();
+		encodedSize += t->decodingType()->calldataHeadSize();
 	m_context.appendInlineAssembly("{ if lt(len, " + to_string(encodedSize) + ") { revert(0, 0) } }", {"len"});
 
 	m_context << Instruction::DUP2 << Instruction::ADD;
@@ -322,8 +322,7 @@ void CompilerUtils::abiDecode(TypePointers const& _typeParameters, bool _fromMem
 					// Size has already been checked for this one.
 					moveIntoStack(2);
 					m_context << Instruction::DUP3;
-					// TODO: is this the right one here?
-					m_context << u256(arrayType.calldataHeadIncrement()) << Instruction::ADD;
+					m_context << u256(arrayType.calldataHeadSize()) << Instruction::ADD;
 				}
 			}
 			else
@@ -360,8 +359,7 @@ void CompilerUtils::abiDecode(TypePointers const& _typeParameters, bool _fromMem
 					// size has already been checked
 					// stack: input_end base_offset data_offset
 					m_context << Instruction::DUP1;
-					// TODO: is this the right one here?
-					m_context << u256(calldataType->calldataHeadIncrement()) << Instruction::ADD;
+					m_context << u256(calldataType->calldataHeadSize()) << Instruction::ADD;
 				}
 				if (arrayType.location() == DataLocation::Memory)
 				{

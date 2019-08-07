@@ -88,7 +88,7 @@ string ABIFunctions::tupleEncoder(
 			elementTempl("pos", to_string(headPos));
 			elementTempl("abiEncode", abiEncodingFunction(*_givenTypes[i], *_targetTypes[i], options));
 			encodeElements += elementTempl.render();
-			headPos += _targetTypes[i]->calldataHeadIncrement();
+			headPos += _targetTypes[i]->calldataHeadSize();
 			stackPos += sizeOnStack;
 		}
 		solAssert(headPos == headSize_, "");
@@ -225,7 +225,7 @@ string ABIFunctions::tupleDecoder(TypePointers const& _types, bool _fromMemory)
 			elementTempl("pos", to_string(headPos));
 			elementTempl("abiDecode", abiDecodingFunction(*_types[i], _fromMemory, true));
 			decodeElements += elementTempl.render();
-			headPos += decodingTypes[i]->calldataHeadIncrement();
+			headPos += decodingTypes[i]->calldataHeadSize();
 		}
 		templ("valueReturnParams", boost::algorithm::join(valueReturnParams, ", "));
 		templ("arrow", valueReturnParams.empty() ? "" : "->");
@@ -913,7 +913,7 @@ string ABIFunctions::abiEncodingFunctionStruct(
 				);
 				encodeTempl("memberValues", memberValues);
 				encodeTempl("encodingOffset", toCompactHexWithPrefix(encodingOffset));
-				encodingOffset += memberTypeTo->calldataHeadIncrement();
+				encodingOffset += memberTypeTo->calldataHeadSize();
 				encodeTempl("abiEncode", abiEncodingFunction(*memberTypeFrom, *memberTypeTo, subOptions));
 				encode = encodeTempl.render();
 			}
@@ -1321,7 +1321,7 @@ string ABIFunctions::abiDecodingFunctionStruct(StructType const& _type, bool _fr
 			members.push_back({});
 			members.back()["decode"] = memberTempl.render();
 			members.back()["memberName"] = member.name;
-			headPos += decodingType->calldataHeadIncrement();
+			headPos += decodingType->calldataHeadSize();
 		}
 		templ("members", members);
 		templ("minimumSize", toCompactHexWithPrefix(headPos));
@@ -1481,7 +1481,7 @@ size_t ABIFunctions::headSize(TypePointers const& _targetTypes)
 {
 	size_t headSize = 0;
 	for (auto const& t: _targetTypes)
-		headSize += t->calldataHeadIncrement();
+		headSize += t->calldataHeadSize();
 
 	return headSize;
 }
