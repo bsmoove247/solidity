@@ -1245,7 +1245,6 @@ string ABIFunctions::abiDecodingFunctionByteArray(ArrayType const& _type, bool _
 string ABIFunctions::abiDecodingFunctionCalldataStruct(StructType const& _type)
 {
 	solAssert(_type.dataStoredIn(DataLocation::CallData), "");
-	solAssert(_type.calldataHeadIncrement() != 0, "");
 	string functionName =
 		"abi_decode_" +
 		_type.identifier();

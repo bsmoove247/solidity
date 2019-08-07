@@ -1647,11 +1647,12 @@ bool ArrayType::validForCalldata() const
 	if (auto arrayBaseType = dynamic_cast<ArrayType const*>(baseType()))
 		if (!arrayBaseType->validForCalldata())
 			return false;
-	return unlimitedCalldataEncodedSize(true) <= numeric_limits<unsigned>::max();
+	return isDynamicallySized() || unlimitedStaticCalldataSize(true) <= numeric_limits<unsigned>::max();
 }
 
-bigint ArrayType::unlimitedCalldataEncodedSize(bool _padded) const
+bigint ArrayType::unlimitedStaticCalldataSize(bool _padded) const
 {
+	solAssert(!isDynamicallySized(), "");
 	bigint size = bigint(length()) * calldataStride();
 	if (_padded)
 		size = ((size + 31) / 32) * 32;
@@ -1661,7 +1662,7 @@ bigint ArrayType::unlimitedCalldataEncodedSize(bool _padded) const
 unsigned ArrayType::calldataEncodedSize(bool _padded) const
 {
 	solAssert(!isDynamicallyEncoded(), "");
-	bigint size = unlimitedCalldataEncodedSize(_padded);
+	bigint size = unlimitedStaticCalldataSize(_padded);
 	solAssert(size <= numeric_limits<unsigned>::max(), "Array size does not fit unsigned.");
 	return unsigned(size);
 }
@@ -1681,7 +1682,7 @@ unsigned ArrayType::calldataEncodedTailSize() const
 		// We do not know the dynamic length itself, but at least the uint256 containing the
 		// length must still be present.
 		return 32;
-	bigint size = unlimitedCalldataEncodedSize(false);
+	bigint size = unlimitedStaticCalldataSize(false);
 	solAssert(size <= numeric_limits<unsigned>::max(), "Array size does not fit unsigned.");
 	return unsigned(size);
 }
@@ -2021,13 +2022,8 @@ unsigned StructType::calldataEncodedSize(bool) const
 		if (!member.type->canLiveOutsideStorage())
 			return 0;
 		else
-		{
 			// Struct members are always padded.
-			unsigned memberSize = member.type->calldataEncodedSize();
-			if (memberSize == 0)
-				return 0;
-			size += memberSize;
-		}
+			size += member.type->calldataEncodedSize();
 	return size;
 }
 
@@ -2051,10 +2047,7 @@ unsigned StructType::calldataEncodedTailSize() const
 		else
 		{
 			// Struct members are always padded.
-			unsigned memberSize = member.type->calldataHeadIncrement();
-			if (memberSize == 0)
-				return 0;
-			size += memberSize;
+			size += member.type->calldataHeadIncrement();
 		}
 	return size;
 }
@@ -2069,9 +2062,7 @@ unsigned StructType::calldataOffsetOfMember(std::string const& _member) const
 			return offset;
 		{
 			// Struct members are always padded.
-			unsigned memberSize = member.type->calldataHeadIncrement();
-			solAssert(memberSize != 0, "");
-			offset += memberSize;
+			offset += member.type->calldataHeadIncrement();
 		}
 	}
 	solAssert(false, "Struct member not found.");
