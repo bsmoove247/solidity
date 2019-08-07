@@ -210,20 +210,20 @@ public:
 
 	/// @returns number of bytes used by this type when encoded for CALL. Cannot be used for
 	/// dynamically encoded types.
-	/// Always returns a value greater than zero and throws, if the type cannot be encoded in calldata
+	/// Always returns a value greater than zero and throws if the type cannot be encoded in calldata
 	/// (or is dynamically encoded).
 	/// If @a _padded then it is assumed that each element is padded to a multiple of 32 bytes.
 	virtual unsigned calldataEncodedSize(bool _padded) const { (void)_padded; solAssert(false, ""); }
 	/// @returns the distance between two elements of this type in an array, tuple or struct.
 	/// For statically-sized types this is the same as calldataEncodedSize(true).
 	/// For dynamically-encoded types this is the distance between two tail pointers, i.e. 32.
-	/// Always returns a value greater than zero and throws, if the type cannot be encoded in calldata.
+	/// Always returns a value greater than zero and throws if the type cannot be encoded in calldata.
 	virtual unsigned calldataHeadIncrement() const { return calldataEncodedSize(); }
 	/// @returns the (minimal) size of the calldata tail for this type. Can only be used for
 	/// dynamically encoded types. For dynamically-sized arrays this is 32 (the size of the length),
 	/// for statically-sized, but dynamically-encoded arrays this is 32*static_length, for structs
 	/// this is the sum of the calldataHeadIncrement's of its members.
-	/// Always returns a value greater than zero and throws, if the type cannot be encoded in calldata
+	/// Always returns a value greater than zero and throws if the type cannot be encoded in calldata
 	/// (or is not dynamically encoded).
 	virtual unsigned calldataEncodedTailSize() const { solAssert(false, ""); }
 	/// @returns the size of this data type in bytes when stored in memory. For memory-reference

@@ -9,7 +9,6 @@ Language Features:
 
 Compiler Features:
  * ABI: Additional internal type info in the field ``internalType``.
- * Code Generator: Treat dynamically encoded but statically sized arrays and structs properly.
  * eWasm: Highly experimental eWasm output using ``--ewasm`` in the commandline interface or output selection of ``ewasm.wast`` in standard-json.
  * Metadata: Update the swarm hash, changes ``bzzr0`` to ``bzzr1`` and urls to use ``bzz-raw://``.
  * Standard JSON Interface: Compile only selected sources and contracts.
@@ -23,6 +22,7 @@ Compiler Features:
 
 Bugfixes:
  * ABI decoder: Ensure that decoded arrays always point to distinct memory locations.
+ * Code Generator: Treat dynamically encoded but statically sized arrays and structs properly.
  * SMTChecker: Fix internal error when inlining functions that contain tuple expressions.
  * SMTChecker: Fix pointer knowledge erasing in loops.
  * SMTChecker: Fix internal error when using compound bitwise assignment operators inside branches.
